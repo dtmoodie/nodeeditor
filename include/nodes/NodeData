@@ -1,1 +1,1 @@
-#include "../../src/NodeData.hpp"
+#include "../../src/NodeEditor/NodeData.hpp"

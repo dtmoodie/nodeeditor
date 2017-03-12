@@ -37,21 +37,40 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 file(GLOB_RECURSE LIB_CPPS  ./src/*.cpp )
 
+set(NodeEditor_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/src" CACHE PATH "" FORCE)
+
 qt5_add_resources(RESOURCES ./resources/resources.qrc)
 
 # Tell CMake to create the helloworld executable
-add_library(nodes SHARED ${LIB_CPPS} ${RESOURCES})
+add_library(NodeEditor SHARED ${LIB_CPPS} ${RESOURCES})
 
-target_include_directories(nodes INTERFACE "include")
+target_include_directories(NodeEditor INTERFACE "include")
 
-target_compile_definitions(nodes PUBLIC "-DNODE_EDITOR_SHARED")
-target_compile_definitions(nodes PRIVATE "-DNODE_EDITOR_EXPORTS")
+target_compile_definitions(NodeEditor PUBLIC "-DNODE_EDITOR_SHARED")
+target_compile_definitions(NodeEditor PRIVATE "-DNODE_EDITOR_EXPORTS")
 
-target_link_libraries(nodes
+target_link_libraries(NodeEditor
                       Qt5::Core
                       Qt5::Widgets
                       Qt5::Gui
                       Qt5::OpenGL)
+
+install(TARGETS NodeEditor
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+          ARCHIVE DESTINATION lib
+)
+
+install(DIRECTORY src/
+      DESTINATION include/NodeEditor
+      FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/
+      DESTINATION include/NodeEditor
+      FILES_MATCHING PATTERN "*.hpp"
+)
+
 
 if(BUILD_EXAMPLES)
   add_subdirectory(examples)

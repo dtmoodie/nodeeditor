@@ -1,1 +1,1 @@
-#include "../../src/DataModelRegistry.hpp"
+#include "../../src/NodeEditor/DataModelRegistry.hpp"
