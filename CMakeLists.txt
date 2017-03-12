@@ -12,7 +12,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Instruct CMake to run moc automatically when needed.
-set(CMAKE_AUTOMOC ON)
+#set(CMAKE_AUTOMOC ON)
 
 # Find the QtWidgets library
 find_package(Qt5 COMPONENTS
@@ -36,13 +36,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #############################################################
 
 file(GLOB_RECURSE LIB_CPPS  ./src/*.cpp )
+file(GLOB_RECURSE LIB_HPPS ./src/*.hpp)
+QT5_WRAP_CPP(MOC ${LIB_HPPS})
 
 set(NodeEditor_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/src" CACHE PATH "" FORCE)
 
 qt5_add_resources(RESOURCES ./resources/resources.qrc)
 
 # Tell CMake to create the helloworld executable
-add_library(NodeEditor SHARED ${LIB_CPPS} ${RESOURCES})
+add_library(NodeEditor SHARED ${LIB_CPPS} ${RESOURCES} ${MOC})
 
 target_include_directories(NodeEditor INTERFACE "include")
 
