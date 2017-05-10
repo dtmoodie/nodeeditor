@@ -74,21 +74,23 @@ boundingRect() const
 {
   auto points = pointsC1C2();
 
-  QRectF basicRect(_out, _in);
+  QRectF basicRect = QRectF(_out, _in).normalized();
 
-  QRectF c1c2Rect(points.first, points.second);
+  QRectF c1c2Rect = QRectF(points.first, points.second).normalized();
 
   auto const &connectionStyle =
     StyleCollection::connectionStyle();
 
   float const diam = connectionStyle.pointDiameter();
 
-  c1c2Rect.setTop(  -diam + c1c2Rect.top());
-  c1c2Rect.setLeft( -diam + c1c2Rect.left());
-  c1c2Rect.setBottom( 2.0*diam + c1c2Rect.bottom());
-  c1c2Rect.setRight(  2.0*diam + c1c2Rect.right());
+  QRectF commonRect = basicRect.united(c1c2Rect);
 
-  return basicRect.united(c1c2Rect);
+  QPointF const cornerOffset(diam, diam);
+
+  commonRect.setTopLeft(commonRect.topLeft() - cornerOffset);
+  commonRect.setBottomRight(commonRect.bottomRight() + 2 * cornerOffset);
+
+  return commonRect;
 }
 
 

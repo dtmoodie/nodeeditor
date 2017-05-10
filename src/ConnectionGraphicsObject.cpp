@@ -135,6 +135,13 @@ move()
   moveEndPoint(PortType::Out);
 }
 
+void ConnectionGraphicsObject::lock(bool locked)
+{
+  setFlag(QGraphicsItem::ItemIsMovable, !locked);
+  setFlag(QGraphicsItem::ItemIsFocusable, !locked);
+  setFlag(QGraphicsItem::ItemIsSelectable, !locked);
+}
+
 
 void
 ConnectionGraphicsObject::
@@ -229,6 +236,7 @@ hoverEnterEvent(QGraphicsSceneHoverEvent* event)
   _connection.connectionGeometry().setHovered(true);
 
   update();
+  _scene.connectionHovered(connection(), event->screenPos());
   event->accept();
 }
 
@@ -240,6 +248,7 @@ hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
   _connection.connectionGeometry().setHovered(false);
 
   update();
+  _scene.connectionHoverLeft(connection());
   event->accept();
 }
 

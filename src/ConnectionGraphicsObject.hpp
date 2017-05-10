@@ -30,6 +30,10 @@ public:
   virtual
   ~ConnectionGraphicsObject();
 
+  enum { Type = UserType + 2 };
+  int
+  type() const override { return Type; }
+
 public:
 
   Connection&
@@ -47,6 +51,9 @@ public:
   /// Updates the position of both ends
   void
   move();
+
+  void
+  lock(bool locked);
 
 protected:
 

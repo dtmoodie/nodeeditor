@@ -28,6 +28,7 @@ NodeGraphicsObject(FlowScene &scene,
   : _scene(scene)
   , _node(node)
   , _proxyWidget(nullptr)
+  , _locked(false)
 {
   _scene.addItem(this);
 
@@ -54,6 +55,8 @@ NodeGraphicsObject(FlowScene &scene,
 
   setAcceptHoverEvents(true);
 
+  setZValue(0);
+
   embedQWidget();
 
   // connect to the move signals to emit the move signals in FlowScene
@@ -79,6 +82,13 @@ node()
   return _node;
 }
 
+
+Node const&
+NodeGraphicsObject::
+node() const
+{
+  return _node;
+}
 
 void
 NodeGraphicsObject::
@@ -130,21 +140,29 @@ moveConnections() const
   NodeState const & nodeState = _node.nodeState();
 
   auto moveConnections =
-  [&](PortType portType)
-  {
-    auto const & connectionEntries =
-      nodeState.getEntries(portType);
-
-    for (auto const & connections : connectionEntries)
+    [&](PortType portType)
     {
-      for (auto & con : connections)
-        con.second->getConnectionGraphicsObject().move();
-    }
-  };
+      auto const & connectionEntries =
+        nodeState.getEntries(portType);
+
+      for (auto const & connections : connectionEntries)
+      {
+        for (auto & con : connections)
+          con.second->getConnectionGraphicsObject().move();
+      }
+    };
 
   moveConnections(PortType::In);
 
   moveConnections(PortType::Out);
+}
+
+void NodeGraphicsObject::lock(bool locked)
+{
+  _locked = locked;
+  setFlag(QGraphicsItem::ItemIsMovable, !locked);
+  setFlag(QGraphicsItem::ItemIsFocusable, !locked);
+  setFlag(QGraphicsItem::ItemIsSelectable, !locked);
 }
 
 
@@ -177,6 +195,8 @@ void
 NodeGraphicsObject::
 mousePressEvent(QGraphicsSceneMouseEvent * event)
 {
+  if(_locked) return;
+
   // deselect all other items after this one is selected
   if (!isSelected() &&
       !(event->modifiers() & Qt::ControlModifier))
@@ -185,47 +205,54 @@ mousePressEvent(QGraphicsSceneMouseEvent * event)
   }
 
   auto clickPort =
-  [&](PortType portToCheck)
-  {
-    NodeGeometry & nodeGeometry = _node.nodeGeometry();
-
-    // TODO do not pass sceneTransform
-    int portIndex = nodeGeometry.checkHitScenePoint(portToCheck,
-                                                    event->scenePos(),
-                                                    sceneTransform());
-
-    if (portIndex != INVALID)
+    [&](PortType portToCheck)
     {
-      NodeState const & nodeState = _node.nodeState();
+      NodeGeometry & nodeGeometry = _node.nodeGeometry();
 
-      std::unordered_map<QUuid, Connection*> connections =
-        nodeState.connections(portToCheck, portIndex);
+      // TODO do not pass sceneTransform
+      int portIndex = nodeGeometry.checkHitScenePoint(portToCheck,
+                                                      event->scenePos(),
+                                                      sceneTransform());
 
-      // start dragging existing connection
-      if (!connections.empty() && portToCheck == PortType::In)
+      if (portIndex != INVALID)
       {
-        auto con = connections.begin()->second;
+        NodeState const & nodeState = _node.nodeState();
 
-        NodeConnectionInteraction interaction(_node, *con, _scene);
+        std::unordered_map<QUuid, Connection*> connections =
+          nodeState.connections(portToCheck, portIndex);
 
-        interaction.disconnect(portToCheck);
+        // start dragging existing connection
+        if (!connections.empty() && portToCheck == PortType::In)
+        {
+          auto con = connections.begin()->second;
+
+          NodeConnectionInteraction interaction(_node, *con, _scene);
+
+          interaction.disconnect(portToCheck);
+        }
+        else // initialize new Connection
+        {
+          const auto outPolicy = _node.nodeDataModel()->portOutConnectionPolicy(portIndex);
+          if (!connections.empty() &&
+              portToCheck == PortType::Out &&
+              outPolicy == NodeDataModel::ConnectionPolicy::One)
+          {
+            _scene.deleteConnection( *connections.begin()->second );
+          }
+
+          // todo add to FlowScene
+          auto connection = _scene.createConnection(portToCheck,
+                                                    _node,
+                                                    portIndex);
+
+          _node.nodeState().setConnection(portToCheck,
+                                          portIndex,
+                                          *connection);
+
+          connection->getConnectionGraphicsObject().grabMouse();
+        }
       }
-      // initialize new Connection
-      else
-      {
-        // todo add to FlowScene
-        auto connection = _scene.createConnection(portToCheck,
-                                                  _node,
-                                                  portIndex);
-
-        _node.nodeState().setConnection(portToCheck,
-                                        portIndex,
-                                        *connection);
-
-        connection->getConnectionGraphicsObject().grabMouse();
-      }
-    }
-  };
+    };
 
   clickPort(PortType::In);
   clickPort(PortType::Out);
@@ -312,8 +339,22 @@ void
 NodeGraphicsObject::
 hoverEnterEvent(QGraphicsSceneHoverEvent * event)
 {
+  // bring all the colliding nodes to background
+  QList<QGraphicsItem *> overlapItems = collidingItems();
+
+  for (QGraphicsItem *item : overlapItems)
+  {
+    if (item->zValue() > 0.0)
+    {
+      item->setZValue(0.0);
+    }
+  }
+  // bring this node forward
+  setZValue(1.0);
+
   _node.nodeGeometry().setHovered(true);
   update();
+  _scene.nodeHovered(node(), event->screenPos());
   event->accept();
 }
 
@@ -324,6 +365,7 @@ hoverLeaveEvent(QGraphicsSceneHoverEvent * event)
 {
   _node.nodeGeometry().setHovered(false);
   update();
+  _scene.nodeHoverLeft(node());
   event->accept();
 }
 
@@ -351,7 +393,8 @@ hoverMoveEvent(QGraphicsSceneHoverEvent * event)
 
 void
 NodeGraphicsObject::
-mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) {
+mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
+{
   QGraphicsItem::mouseDoubleClickEvent(event);
 
   _scene.nodeDoubleClicked(node());

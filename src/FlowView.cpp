@@ -13,6 +13,7 @@
 
 #include <QDebug>
 #include <iostream>
+#include <cmath>
 
 #include "FlowScene.hpp"
 #include "DataModelRegistry.hpp"
@@ -46,6 +47,25 @@ FlowView(FlowScene *scene)
   setCacheMode(QGraphicsView::CacheBackground);
 
   //setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
+
+  // setup actions
+  _clearSelectionAction = new QAction(QStringLiteral("Clear Selection"), this);
+  _clearSelectionAction->setShortcut(Qt::Key_Escape);
+  connect(_clearSelectionAction, &QAction::triggered, _scene, &QGraphicsScene::clearSelection);
+  addAction(_clearSelectionAction);
+
+  _deleteSelectionAction = new QAction(QStringLiteral("Delete Selection"), this);
+  _deleteSelectionAction->setShortcut(Qt::Key_Delete);
+  connect(_deleteSelectionAction, &QAction::triggered, this, &FlowView::deleteSelectedNodes);
+  addAction(_deleteSelectionAction);
+}
+
+QAction* FlowView::clearSelectionAction() const {
+  return _clearSelectionAction;
+}
+
+QAction* FlowView::deleteSelectionAction() const {
+  return _deleteSelectionAction;
 }
 
 
@@ -55,46 +75,54 @@ contextMenuEvent(QContextMenuEvent *event)
 {
   QMenu modelMenu;
 
-  auto filterActionText = QStringLiteral("skip me");
+  auto skipText = QStringLiteral("skip me");
 
+  //Add filterbox to the context menu
   auto *txtBox = new QLineEdit(&modelMenu);
   txtBox->setPlaceholderText(QStringLiteral("Filter"));
   txtBox->setClearButtonEnabled(true);
 
   auto *txtBoxAction = new QWidgetAction(&modelMenu);
   txtBoxAction->setDefaultWidget(txtBox);
-  txtBoxAction->setText(filterActionText);
 
   modelMenu.addAction(txtBoxAction);
 
-  connect(txtBox, &QLineEdit::textChanged, [&](const QString &text) 
-  {
-    for (auto action : modelMenu.actions())
-    {
-      auto actionText = action->text();
-      if (actionText != filterActionText && !actionText.contains(text, Qt::CaseInsensitive))
-      {
-        action->setVisible(false);
-      }
-      else
-      {
-        action->setVisible(true);
-      }
-    }
-  });
+  //Add result treeview to the context menu
+  auto *treeView = new QTreeWidget(&modelMenu); 
+  treeView->header()->close();
 
-  for (auto const &modelRegistry : _scene->registry().registeredModels())
+  auto *treeViewAction = new QWidgetAction(&modelMenu);
+  treeViewAction->setDefaultWidget(treeView);
+
+  modelMenu.addAction(treeViewAction);
+
+  QMap<QString, QTreeWidgetItem*> topLevelItems;
+  for (auto const &cat : _scene->registry().categories())
   {
-    QString const &modelName = modelRegistry.first;
-    modelMenu.addAction(modelName);
+    auto item = new QTreeWidgetItem(treeView);
+    item->setText(0, cat);
+    item->setData(0, Qt::UserRole, skipText);
+    topLevelItems[cat] = item;
   }
-  
-  // make sure the text box gets focus so the user doesn't have to click on it
-  txtBox->setFocus();
-  
-  if (QAction * action = modelMenu.exec(event->globalPos()))
+
+  for (auto const &assoc : _scene->registry().registeredModelsCategoryAssociation())
   {
-    QString modelName = action->text();
+    auto parent = topLevelItems[assoc.second];
+    auto item = new QTreeWidgetItem(parent);
+    item->setText(0, assoc.first);
+    item->setData(0, Qt::UserRole, assoc.first);
+  }
+
+  treeView->expandAll();
+  
+  connect(treeView, &QTreeWidget::itemActivated, [&](QTreeWidgetItem *item, int column)
+  {
+    QString modelName = item->data(0, Qt::UserRole).toString();
+
+    if (modelName == skipText)
+    {
+      return;
+    }
 
     auto type = _scene->registry().create(modelName);
 
@@ -112,7 +140,34 @@ contextMenuEvent(QContextMenuEvent *event)
     {
       qDebug() << "Model not found";
     }
-  }
+    modelMenu.close();
+  });
+  
+  //Setup filtering
+  connect(txtBox, &QLineEdit::textChanged, [&](const QString &text)
+  {
+    for (auto& topLvlItem : topLevelItems)
+    {
+      for (int i = 0; i < topLvlItem->childCount(); ++i)
+      {
+        auto child = topLvlItem->child(i);
+        auto modelName = child->data(0, Qt::UserRole).toString();
+        if (modelName.contains(text, Qt::CaseInsensitive))
+        {
+          child->setHidden(false);
+        }
+        else
+        {
+          child->setHidden(true);
+        }
+      }
+    }
+  });
+
+  // make sure the text box gets focus so the user doesn't have to click on it
+  txtBox->setFocus();
+  
+  modelMenu.exec(event->globalPos());
 }
 
 
@@ -163,6 +218,24 @@ scaleDown()
   scale(factor, factor);
 }
 
+void
+FlowView::
+deleteSelectedNodes()
+{
+  // delete the nodes, this will delete many of the connections
+  for (QGraphicsItem * item : _scene->selectedItems())
+  {
+    if (auto n = qgraphicsitem_cast<NodeGraphicsObject*>(item))
+      _scene->removeNode(n->node());
+
+  }
+
+  for (QGraphicsItem * item : _scene->selectedItems())
+  {
+    if (auto c = qgraphicsitem_cast<ConnectionGraphicsObject*>(item))
+      _scene->deleteConnection(c->connection());
+  }
+}
 
 void
 FlowView::
@@ -170,33 +243,6 @@ keyPressEvent(QKeyEvent *event)
 {
   switch (event->key())
   {
-    case Qt::Key_Escape:
-      _scene->clearSelection();
-      break;
-
-    case Qt::Key_Delete:
-    {
-      std::vector<Node*> nodesToDelete;
-      std::vector<Connection*> connectionsToDelete;
-      for (QGraphicsItem * item : _scene->selectedItems())
-      {
-        if (auto n = dynamic_cast<NodeGraphicsObject*>(item))
-          nodesToDelete.push_back(&n->node());
-
-        if (auto c = dynamic_cast<ConnectionGraphicsObject*>(item))
-          connectionsToDelete.push_back(&c->connection());
-      }
-
-      for( auto & n : nodesToDelete )
-        _scene->removeNode(*n);
-
-      for( auto & c : connectionsToDelete )
-        _scene->deleteConnection(*c);
-
-    }
-
-    break;
-
     case Qt::Key_Shift:
       setDragMode(QGraphicsView::RubberBandDrag);
       break;
@@ -284,20 +330,4 @@ showEvent(QShowEvent *event)
 {
   _scene->setSceneRect(this->rect());
   QGraphicsView::showEvent(event);
-}
-
-
-void
-FlowView::
-mousePressEvent(QMouseEvent* event)
-{
-  QGraphicsView::mousePressEvent(event);
-}
-
-
-void
-FlowView::
-mouseMoveEvent(QMouseEvent* event)
-{
-  QGraphicsView::mouseMoveEvent(event);
 }

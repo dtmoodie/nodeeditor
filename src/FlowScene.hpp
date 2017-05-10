@@ -71,6 +71,20 @@ public:
   void
   iterateOverNodes(std::function<void(Node*)> visitor);
 
+  void
+  iterateOverNodeData(std::function<void(NodeDataModel*)> visitor);
+
+  void
+  iterateOverNodeDataDependentOrder(std::function<void(NodeDataModel*)> visitor);
+
+  QPointF
+  getNodePosition(const Node& node) const;
+
+  void
+  setNodePosition(Node& node, const QPointF& pos) const;
+  
+  QSizeF
+  getNodeSize(const Node& node) const;
 public:
 
   std::unordered_map<QUuid, std::unique_ptr<Node> > const &
@@ -79,7 +93,13 @@ public:
   std::unordered_map<QUuid, std::shared_ptr<Connection> > const &
   connections() const;
 
+  std::vector<Node*>
+  selectedNodes() const;
+
 public:
+
+  void
+  clearScene();
 
   void
   save() const;
@@ -87,7 +107,13 @@ public:
   void
   load();
 
-signals:
+  QByteArray 
+  saveToMemory() const;
+
+  void 
+  loadFromMemory(const QByteArray& data);
+
+  signals:
 
   void
   nodeCreated(Node &n);
@@ -105,6 +131,18 @@ signals:
 
   void
   nodeDoubleClicked(Node& n);
+
+  void
+  connectionHovered(Connection& c, QPoint screenPos);
+
+  void
+  nodeHovered(Node& n, QPoint screenPos);
+
+  void
+  connectionHoverLeft(Connection& c);
+
+  void
+  nodeHoverLeft(Node& n);
 
 private:
 
