@@ -140,6 +140,9 @@ signals:
   void
   computingFinished();
 
+  void 
+  portsChanged();
+
 private:
 
   NodeStyle _nodeStyle;

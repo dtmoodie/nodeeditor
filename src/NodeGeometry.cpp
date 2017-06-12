@@ -69,44 +69,52 @@ boundingRect() const
 
 void
 NodeGeometry::
-recalculateSize() const
+recalculateSize()
 {
-  _entryHeight = _fontMetrics.height();
-
-  {
-    unsigned int maxNumOfEntries = std::max(_nSinks, _nSources);
-    unsigned int step = _entryHeight + _spacing;
-    _height = step * maxNumOfEntries;
-  }
-
-  if (auto w = _dataModel->embeddedWidget())
-  {
-    _height = std::max(_height, static_cast<unsigned>(w->height()));
-  }
-
-  _height += captionHeight();
-
-  _inputPortWidth  = portWidth(PortType::In);
-  _outputPortWidth = portWidth(PortType::Out);
-
-  _width = _inputPortWidth +
-           _outputPortWidth +
-           2 * _spacing;
-
-  if (auto w = _dataModel->embeddedWidget())
-  {
-    _width += w->width();
-  }
-
-  _width = std::max(_width, captionWidth());
-
-  if (_dataModel->validationState() != NodeValidationState::Valid)
-  {
-    _width   = std::max(_width, validationWidth());
-    _height += validationHeight() + _spacing;
-  }
+  _nSources = _dataModel->nPorts(PortType::Out);
+  _nSinks = _dataModel->nPorts(PortType::In);
+  static_cast<const NodeGeometry*>(this)->recalculateSize();
 }
 
+void
+NodeGeometry::
+recalculateSize() const
+{
+    _entryHeight = _fontMetrics.height();
+
+    {
+        unsigned int maxNumOfEntries = std::max(_nSinks, _nSources);
+        unsigned int step = _entryHeight + _spacing;
+        _height = step * maxNumOfEntries;
+    }
+
+    if (auto w = _dataModel->embeddedWidget())
+    {
+        _height = std::max(_height, static_cast<unsigned>(w->height()));
+    }
+
+    _height += captionHeight();
+
+    _inputPortWidth = portWidth(PortType::In);
+    _outputPortWidth = portWidth(PortType::Out);
+
+    _width = _inputPortWidth +
+        _outputPortWidth +
+        2 * _spacing;
+
+    if (auto w = _dataModel->embeddedWidget())
+    {
+        _width += w->width();
+    }
+
+    _width = std::max(_width, captionWidth());
+
+    if (_dataModel->validationState() != NodeValidationState::Valid)
+    {
+        _width = std::max(_width, validationWidth());
+        _height += validationHeight() + _spacing;
+    }
+}
 
 void
 NodeGeometry::

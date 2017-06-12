@@ -35,6 +35,8 @@ Node(std::unique_ptr<NodeDataModel> && dataModel)
   // propagate data: model => node
   connect(_nodeDataModel.get(), &NodeDataModel::dataUpdated,
           this, &Node::onDataUpdated);
+  connect(_nodeDataModel.get(), &NodeDataModel::portsChanged, 
+          this, &Node::onPortsChanged);
 }
 
 
@@ -209,4 +211,15 @@ onDataUpdated(PortIndex index)
 
   for (auto const & c : connections)
     c.second->propagateData(nodeData);
+}
+
+void 
+Node::
+onPortsChanged()
+{
+    _nodeGeometry.recalculateSize();
+    _nodeState.update(*_nodeDataModel);
+    _nodeGraphicsObject->update();
+    _nodeGraphicsObject->setGeometryChanged();
+    //_nodeGraphicsObject->paint();
 }

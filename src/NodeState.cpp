@@ -136,3 +136,11 @@ resizing() const
 {
   return _resizing;
 }
+
+void
+NodeState::
+update(NodeDataModel& model)
+{
+    _outConnections.resize(model.nPorts(PortType::Out));
+    _inConnections.resize(model.nPorts(PortType::In));
+}

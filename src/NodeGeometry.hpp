@@ -83,6 +83,9 @@ public:
 
   /// Updates size unconditionally
   void
+  recalculateSize();
+
+  void
   recalculateSize() const;
 
   /// Updates size if the QFontMetrics is changed

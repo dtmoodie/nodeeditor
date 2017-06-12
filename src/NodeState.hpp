@@ -80,7 +80,8 @@ public:
 
   bool
   resizing() const;
-
+  void
+  update(NodeDataModel& model);
 private:
 
   std::vector<ConnectionPtrSet> _inConnections;

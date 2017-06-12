@@ -97,6 +97,8 @@ public slots: // data propagation
   void
   onDataUpdated(PortIndex index);
 
+  void 
+  onPortsChanged();
 private:
 
   // addressing
