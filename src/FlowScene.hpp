@@ -101,16 +101,16 @@ public:
   void
   clearScene();
 
-  void
+  virtual void
   save() const;
 
-  void
+  virtual void
   load();
 
-  QByteArray 
+  virtual QByteArray
   saveToMemory() const;
 
-  void 
+  virtual void 
   loadFromMemory(const QByteArray& data);
 
   signals:
@@ -144,7 +144,7 @@ public:
   void
   nodeHoverLeft(Node& n);
 
-private:
+protected:
 
   using SharedConnection = std::shared_ptr<Connection>;
   using UniqueNode       = std::unique_ptr<Node>;
