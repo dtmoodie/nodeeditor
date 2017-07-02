@@ -1,5 +1,5 @@
 #pragma once
-
+#include "Export.hpp"
 #include <memory>
 
 #include <QtCore/QUuid>
@@ -17,7 +17,7 @@ class ConnectionGeometry;
 class Node;
 
 /// Graphic Object for connection. Adds itself to scene
-class ConnectionGraphicsObject
+class NODE_EDITOR_PUBLIC ConnectionGraphicsObject
   : public QGraphicsObject
 {
   Q_OBJECT
